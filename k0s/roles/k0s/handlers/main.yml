@@ -1,0 +1,21 @@
+---
+- name: restart k0s
+  systemd:
+    name: "{{ k0s_service_name }}"
+    state: restarted
+    daemon_reload: yes
+
+- name: reload firewalld
+  systemd:
+    name: firewalld
+    state: reloaded
+
+- name: stop k0s
+  systemd:
+    name: "{{ k0s_service_name }}"
+    state: stopped
+
+- name: start k0s
+  systemd:
+    name: "{{ k0s_service_name }}"
+    state: started

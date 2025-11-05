@@ -1,0 +1,18 @@
+---
+- name: Check system requirements
+  include_tasks: preflight.yml
+
+- name: Install k0s prerequisites
+  include_tasks: prerequisites.yml
+
+- name: Install k0s binary
+  include_tasks: install.yml
+
+- name: Configure k0s
+  include_tasks: configure.yml
+
+- name: Start k0s service
+  include_tasks: service.yml
+
+- name: Verify k0s installation
+  include_tasks: verify.yml

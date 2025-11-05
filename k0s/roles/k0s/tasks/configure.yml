@@ -1,0 +1,36 @@
+---
+- name: Generate k0s configuration
+  template:
+    src: k0s.yaml.j2
+    dest: "{{ k0s_config_dir }}/k0s.yaml"
+    mode: '0644'
+    owner: root
+    group: root
+  register: k0s_config_file
+
+- name: Validate k0s configuration
+  command: "{{ k0s_install_dir }}/k0s config validate --config {{ k0s_config_dir }}/k0s.yaml"
+  changed_when: false
+  when: k0s_config_file is changed
+
+- name: Check if k0s is already installed and running
+  systemd:
+    name: "{{ k0s_service_name }}"
+  register: k0s_service_status
+  failed_when: false
+
+- name: Install k0s as controller+worker (single-node)
+  command: >
+    {{ k0s_install_dir }}/k0s install controller
+    --enable-worker
+    --config {{ k0s_config_dir }}/k0s.yaml
+  when: k0s_service_status.status is not defined or k0s_service_status.status.LoadState != "loaded"
+  notify: restart k0s
+
+- name: Update k0s configuration if changed
+  command: "{{ k0s_install_dir }}/k0s stop"
+  when:
+    - k0s_config_file is changed
+    - k0s_service_status.status is defined
+    - k0s_service_status.status.ActiveState == "active"
+  notify: restart k0s

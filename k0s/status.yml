@@ -1,0 +1,48 @@
+---
+- name: Check k0s cluster status
+  hosts: k0s_nodes
+  become: yes
+  gather_facts: no
+
+  tasks:
+    - name: Check k0s service status
+      systemd:
+        name: k0scontroller
+      register: k0s_service
+
+    - name: Get k0s status
+      command: /usr/local/bin/k0s status
+      register: k0s_status
+      changed_when: false
+
+    - name: Get cluster nodes
+      command: /usr/local/bin/k0s kubectl get nodes
+      register: k0s_nodes_output
+      changed_when: false
+
+    - name: Get all pods
+      command: /usr/local/bin/k0s kubectl get pods -A
+      register: k0s_pods
+      changed_when: false
+
+    - name: Display status
+      debug:
+        msg: |
+          ============================================
+          k0s Cluster Status
+          ============================================
+
+          Service Status: {{ k0s_service.status.ActiveState }}
+
+          {{ k0s_status.stdout }}
+
+          ============================================
+          Cluster Nodes
+          ============================================
+          {{ k0s_nodes_output.stdout }}
+
+          ============================================
+          All Pods
+          ============================================
+          {{ k0s_pods.stdout }}
+          ============================================

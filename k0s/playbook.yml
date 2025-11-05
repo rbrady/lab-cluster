@@ -1,0 +1,27 @@
+---
+- name: Deploy k0s single-node Kubernetes cluster
+  hosts: k0s_nodes
+  become: yes
+
+  roles:
+    - k0s
+
+  post_tasks:
+    - name: Display cluster status
+      command: k0s kubectl get nodes
+      register: cluster_nodes
+      changed_when: false
+
+    - name: Show cluster information
+      debug:
+        msg: |
+          k0s cluster is now running!
+
+          To interact with the cluster from this machine, run:
+          sudo k0s kubectl get nodes
+
+          To get the kubeconfig file:
+          sudo k0s kubeconfig admin > ~/.kube/config
+
+          Current nodes:
+          {{ cluster_nodes.stdout }}

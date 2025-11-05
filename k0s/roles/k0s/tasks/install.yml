@@ -1,0 +1,61 @@
+---
+- name: Check if k0s binary exists
+  stat:
+    path: "{{ k0s_install_dir }}/k0s"
+  register: k0s_binary_check
+
+- name: Get installed k0s version
+  command: "{{ k0s_install_dir }}/k0s version"
+  register: installed_version
+  changed_when: false
+  failed_when: false
+  when: k0s_binary_check.stat.exists
+
+- name: Download k0s installation script
+  get_url:
+    url: "{{ k0s_download_url }}"
+    dest: /tmp/k0s-install.sh
+    mode: '0755'
+  when: not k0s_binary_check.stat.exists or k0s_version != 'latest'
+
+- name: Install k0s binary (latest version)
+  shell: |
+    curl -sSLf {{ k0s_download_url }} | sh
+  args:
+    creates: "{{ k0s_install_dir }}/k0s"
+  when:
+    - k0s_version == 'latest'
+    - not k0s_binary_check.stat.exists
+
+- name: Install k0s binary (specific version)
+  shell: |
+    curl -sSLf {{ k0s_download_url }} | K0S_VERSION={{ k0s_version }} sh
+  when:
+    - k0s_version != 'latest'
+    - not k0s_binary_check.stat.exists
+
+- name: Verify k0s binary installation
+  stat:
+    path: "{{ k0s_install_dir }}/k0s"
+  register: k0s_installed
+
+- name: Fail if k0s binary not found
+  fail:
+    msg: "k0s binary installation failed - binary not found at {{ k0s_install_dir }}/k0s"
+  when: not k0s_installed.stat.exists
+
+- name: Get k0s version
+  command: "{{ k0s_install_dir }}/k0s version"
+  register: k0s_version_output
+  changed_when: false
+
+- name: Display installed k0s version
+  debug:
+    msg: "k0s version installed: {{ k0s_version_output.stdout }}"
+
+- name: Set k0s binary permissions
+  file:
+    path: "{{ k0s_install_dir }}/k0s"
+    mode: '0755'
+    owner: root
+    group: root

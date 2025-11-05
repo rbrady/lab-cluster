@@ -1,0 +1,89 @@
+---
+- name: Wait for node to be ready
+  command: '{{ k0s_install_dir }}/k0s kubectl get nodes -o jsonpath=''{.items[0].status.conditions[?(@.type=="Ready")].status}'''
+  register: node_ready
+  until: node_ready.stdout == "True"
+  retries: 30
+  delay: 10
+  changed_when: false
+
+- name: Get node information
+  command: "{{ k0s_install_dir }}/k0s kubectl get nodes -o wide"
+  register: k0s_nodes
+  changed_when: false
+
+- name: Display node information
+  debug:
+    msg: "{{ k0s_nodes.stdout_lines }}"
+
+- name: Get system pods status
+  command: "{{ k0s_install_dir }}/k0s kubectl get pods -n kube-system"
+  register: k0s_pods
+  changed_when: false
+
+- name: Display system pods
+  debug:
+    msg: "{{ k0s_pods.stdout_lines }}"
+
+- name: Check k0s cluster status
+  command: "{{ k0s_install_dir }}/k0s status"
+  register: k0s_status
+  changed_when: false
+
+- name: Display cluster status
+  debug:
+    msg: "{{ k0s_status.stdout_lines }}"
+
+- name: Verify k0s API endpoint
+  uri:
+    url: "https://localhost:6443/healthz"
+    validate_certs: no
+    status_code: 200
+  register: api_health
+  until: api_health.status == 200
+  retries: 10
+  delay: 5
+  ignore_errors: yes
+
+- name: Create kubeconfig directory for current user
+  file:
+    path: "{{ ansible_env.HOME }}/.kube"
+    state: directory
+    mode: "0755"
+    owner: "{{ ansible_env.USER }}"
+  when: ansible_env.HOME is defined
+
+- name: Export kubeconfig for kubectl access
+  shell: "{{ k0s_install_dir }}/k0s kubeconfig admin > {{ ansible_env.HOME }}/.kube/config"
+  args:
+    creates: "{{ ansible_env.HOME }}/.kube/config"
+  when: ansible_env.HOME is defined
+
+- name: Set kubeconfig file permissions
+  file:
+    path: "{{ ansible_env.HOME }}/.kube/config"
+    mode: "0600"
+    owner: "{{ ansible_env.USER }}"
+  when: ansible_env.HOME is defined
+
+- name: Verification summary
+  debug:
+    msg: |
+      ============================================
+      k0s Single-Node Cluster Installation Complete!
+      ============================================
+
+      Cluster Status: {{ k0s_status.stdout }}
+      API Endpoint: https://localhost:6443
+
+      To interact with your cluster:
+      1. As root: sudo k0s kubectl get nodes
+      2. With kubeconfig: kubectl --kubeconfig ~/.kube/config get nodes
+      3. Export KUBECONFIG: export KUBECONFIG=~/.kube/config
+
+      Common commands:
+      - Check cluster: sudo k0s status
+      - View pods: sudo k0s kubectl get pods -A
+      - View services: sudo k0s kubectl get svc -A
+
+      ============================================

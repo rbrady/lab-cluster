@@ -1,0 +1,70 @@
+---
+apiVersion: k0s.k0sproject.io/v1beta1
+kind: ClusterConfig
+metadata:
+  name: k0s-single-node
+spec:
+  api:
+    address: {{ ansible_default_ipv4.address }}
+    port: 6443
+    k0sApiPort: 9443
+    sans:
+      - {{ ansible_default_ipv4.address }}
+      - {{ ansible_hostname }}
+      - {{ ansible_fqdn }}
+      - localhost
+      - 127.0.0.1
+
+  storage:
+    type: {{ k0s_config.spec.storage.type | default('etcd') }}
+    etcd:
+      peerAddress: {{ ansible_default_ipv4.address }}
+
+  network:
+    provider: {{ k0s_config.spec.network.provider | default('kuberouter') }}
+    podCIDR: {{ k0s_config.spec.network.podCIDR | default('10.244.0.0/16') }}
+    serviceCIDR: {{ k0s_config.spec.network.serviceCIDR | default('10.96.0.0/12') }}
+    kubeProxy:
+      mode: iptables
+
+  podSecurityPolicy:
+    defaultPolicy: 00-k0s-privileged
+
+  telemetry:
+    enabled: false
+
+  installConfig:
+    users:
+      etcdUser: etcd
+      kineUser: kube-apiserver
+      konnectivityUser: konnectivity-server
+      kubeAPIserverUser: kube-apiserver
+      kubeSchedulerUser: kube-scheduler
+
+  extensions:
+    storage:
+      type: external_storage
+
+    helm:
+      repositories:
+{% if k0s_config.spec.extensions.helm.repositories is defined %}
+{% for repo in k0s_config.spec.extensions.helm.repositories %}
+        - name: {{ repo.name }}
+          url: {{ repo.url }}
+{% endfor %}
+{% endif %}
+      charts:
+{% if k0s_enable_metrics_server %}
+        - name: metrics-server
+          chartname: metrics-server/metrics-server
+          version: "3.11.0"
+          namespace: kube-system
+          values: |
+            args:
+              - --kubelet-insecure-tls
+              - --kubelet-preferred-address-types=InternalIP
+{% endif %}
+
+  konnectivity:
+    agentPort: 8132
+    adminPort: 8133

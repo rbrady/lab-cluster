@@ -1,0 +1,62 @@
+---
+- name: Gather system facts
+  setup:
+    gather_subset:
+      - hardware
+      - distribution
+
+- name: Display system information
+  debug:
+    msg: |
+      System: {{ ansible_distribution }} {{ ansible_distribution_version }}
+      Memory: {{ ansible_memtotal_mb }} MB
+      CPUs: {{ ansible_processor_vcpus }}
+      Architecture: {{ ansible_architecture }}
+
+- name: Check if running on supported architecture
+  fail:
+    msg: "k0s requires x86_64 or aarch64 architecture. Current: {{ ansible_architecture }}"
+  when: ansible_architecture not in ['x86_64', 'aarch64', 'arm64']
+
+- name: Check minimum memory requirements
+  debug:
+    msg: "WARNING: System has {{ ansible_memtotal_mb }} MB RAM, which is below recommended 2048 MB for production use"
+  when: ansible_memtotal_mb < 2048
+
+- name: Check minimum CPU requirements
+  debug:
+    msg: "System meets minimum CPU requirements ({{ ansible_processor_vcpus }} CPUs)"
+  when: ansible_processor_vcpus >= k0s_min_cpus
+
+- name: Warn about low CPU count
+  debug:
+    msg: "WARNING: System has only {{ ansible_processor_vcpus }} CPU(s)"
+  when: ansible_processor_vcpus < 2
+
+- name: Check if k0s is already installed
+  stat:
+    path: "{{ k0s_install_dir }}/k0s"
+  register: k0s_binary
+
+- name: Get current k0s version if installed
+  command: "{{ k0s_install_dir }}/k0s version"
+  register: k0s_current_version
+  changed_when: false
+  failed_when: false
+  when: k0s_binary.stat.exists
+
+- name: Display current k0s version
+  debug:
+    msg: "k0s is already installed: {{ k0s_current_version.stdout }}"
+  when: k0s_binary.stat.exists and k0s_current_version.rc == 0
+
+- name: Check if systemd is available
+  command: systemctl --version
+  register: systemd_check
+  changed_when: false
+  failed_when: false
+
+- name: Fail if systemd is not available
+  fail:
+    msg: "systemd is required but not found on this system"
+  when: systemd_check.rc != 0

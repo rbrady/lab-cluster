@@ -1,0 +1,29 @@
+# Vendor directory (managed by jsonnet-bundler)
+vendor/
+
+# Lock file can be committed or ignored depending on preference
+# Uncomment to ignore:
+# jsonnetfile.lock.json
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files
+*.tmp
+tmp/
+
+# Output directories
+output/
+manifests/
+_output/
+
+# Local environment overrides
+*.local.jsonnet
+
+# Tanka cache
+.tanka/

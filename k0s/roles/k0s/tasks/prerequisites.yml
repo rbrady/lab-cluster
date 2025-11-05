@@ -1,0 +1,94 @@
+---
+- name: Update package cache (Fedora)
+  dnf:
+    update_cache: yes
+  when: ansible_distribution == "Fedora"
+
+- name: Install required system packages
+  dnf:
+    name:
+      - curl
+      - iptables
+      - iproute
+      - policycoreutils-python-utils
+      - container-selinux
+    state: present
+  when: ansible_distribution == "Fedora"
+
+- name: Check if firewalld is running
+  systemd:
+    name: firewalld
+  register: firewalld_service
+  failed_when: false
+
+- name: Configure firewall for k0s
+  firewalld:
+    port: "{{ item }}"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  loop: "{{ k0s_firewall_ports }}"
+  when:
+    - k0s_configure_firewall
+    - firewalld_service.status is defined
+    - firewalld_service.status.ActiveState == "active"
+  notify: reload firewalld
+
+- name: Check SELinux status
+  command: getenforce
+  register: selinux_status
+  changed_when: false
+  failed_when: false
+
+- name: Set SELinux to permissive mode for k0s
+  selinux:
+    policy: targeted
+    state: permissive
+  when:
+    - k0s_selinux_permissive
+    - selinux_status.stdout == "Enforcing"
+  register: selinux_change
+
+- name: Notify about SELinux change
+  debug:
+    msg: "SELinux has been set to permissive mode. For production use, consider creating proper SELinux policies."
+  when: selinux_change is changed
+
+- name: Enable IP forwarding
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    sysctl_set: yes
+    state: present
+    reload: yes
+
+- name: Enable bridge netfilter
+  modprobe:
+    name: br_netfilter
+    state: present
+
+- name: Make br_netfilter load on boot
+  copy:
+    content: "br_netfilter\n"
+    dest: /etc/modules-load.d/k0s.conf
+    mode: '0644'
+
+- name: Configure bridge networking for Kubernetes
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_set: yes
+    state: present
+    reload: yes
+  loop:
+    - { name: 'net.bridge.bridge-nf-call-iptables', value: '1' }
+    - { name: 'net.bridge.bridge-nf-call-ip6tables', value: '1' }
+
+- name: Ensure k0s directories exist
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ k0s_config_dir }}"
+    - "{{ k0s_data_dir }}"

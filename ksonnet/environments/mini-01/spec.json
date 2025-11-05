@@ -1,0 +1,13 @@
+{
+  "apiVersion": "tanka.dev/v1alpha1",
+  "kind": "Environment",
+  "metadata": {
+    "name": "environments/mini-01"
+  },
+  "spec": {
+    "apiServer": "https://mini-01:6443",
+    "namespace": "default",
+    "resourceDefaults": {},
+    "expectVersions": {}
+  }
+}

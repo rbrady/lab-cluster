@@ -1,0 +1,170 @@
+---
+# Example variables file for k0s installation
+# Copy this file to vars.yml and customize as needed
+# Usage: ansible-playbook -i inventory.ini playbook.yml -e @vars.yml
+
+# ============================================
+# k0s Version Configuration
+# ============================================
+
+# Specify k0s version to install
+# Use 'latest' for the most recent stable version
+# Or specify a version like 'v1.29.1+k0s.0'
+k0s_version: latest
+
+# ============================================
+# Installation Paths
+# ============================================
+
+# Directory where k0s binary will be installed
+k0s_install_dir: /usr/local/bin
+
+# k0s configuration directory
+k0s_config_dir: /etc/k0s
+
+# k0s data directory
+k0s_data_dir: /var/lib/k0s
+
+# ============================================
+# Cluster Configuration
+# ============================================
+
+# Enable controller component (required for single-node)
+k0s_enable_controller: true
+
+# Enable worker component (required for single-node)
+k0s_enable_worker: true
+
+# Service name
+k0s_service_name: k0scontroller
+
+# ============================================
+# System Requirements
+# ============================================
+
+# Minimum memory in MB (for validation)
+k0s_min_memory_mb: 1024
+
+# Minimum CPU cores (for validation)
+k0s_min_cpus: 1
+
+# ============================================
+# Firewall Configuration
+# ============================================
+
+# Configure firewalld rules (true/false)
+k0s_configure_firewall: true
+
+# Ports to open in firewall
+k0s_firewall_ports:
+  - "6443/tcp"   # Kubernetes API
+  - "8132/tcp"   # Konnectivity
+  - "9443/tcp"   # k0s API
+  - "10250/tcp"  # kubelet
+  - "10256/tcp"  # kube-proxy health
+  - "2380/tcp"   # etcd peer
+  - "6783/tcp"   # kube-router
+  - "6784/udp"   # kube-router
+
+# ============================================
+# SELinux Configuration
+# ============================================
+
+# Set SELinux to permissive mode
+# Note: For production, consider creating proper SELinux policies
+k0s_selinux_permissive: true
+
+# ============================================
+# Network Configuration
+# ============================================
+
+k0s_config:
+  spec:
+    api:
+      # API server bind address (0.0.0.0 for all interfaces)
+      address: 0.0.0.0
+
+    storage:
+      # Storage backend type (etcd or kine)
+      type: etcd
+
+    network:
+      # Network provider (kuberouter, calico, or custom)
+      provider: kuberouter
+
+      # Pod network CIDR
+      podCIDR: 10.244.0.0/16
+
+      # Service network CIDR
+      serviceCIDR: 10.96.0.0/12
+
+    extensions:
+      helm:
+        # Helm chart repositories
+        repositories:
+          - name: stable
+            url: https://charts.helm.sh/stable
+          - name: prometheus-community
+            url: https://prometheus-community.github.io/helm-charts
+          - name: metrics-server
+            url: https://kubernetes-sigs.github.io/metrics-server
+
+# ============================================
+# Feature Flags
+# ============================================
+
+# Enable metrics-server for resource monitoring
+# Useful for 'kubectl top nodes' and 'kubectl top pods'
+k0s_enable_metrics_server: true
+
+# ============================================
+# Advanced Configuration Examples
+# ============================================
+
+# Example: Use Calico instead of kuberouter
+# k0s_config:
+#   spec:
+#     network:
+#       provider: calico
+#       calico:
+#         mode: vxlan
+#         vxlanPort: 4789
+#         vxlanVNI: 4096
+#         mtu: 1450
+
+# Example: Configure specific k0s version for ARM64
+# k0s_version: v1.29.1+k0s.0
+# (k0s automatically detects architecture)
+
+# Example: Resource-constrained settings for 4GB RAM system
+# k0s_config:
+#   spec:
+#     api:
+#       address: 127.0.0.1
+#     network:
+#       provider: kuberouter
+#       podCIDR: 10.244.0.0/16
+#       serviceCIDR: 10.96.0.0/16
+#       kubeProxy:
+#         mode: iptables
+
+# Example: Disable metrics-server to save resources
+# k0s_enable_metrics_server: false
+
+# Example: Keep SELinux enforcing (advanced)
+# k0s_selinux_permissive: false
+# Note: This requires proper SELinux policies to be configured
+
+# ============================================
+# Multi-Node Configuration (Future Use)
+# ============================================
+
+# For future expansion to multi-node cluster:
+# k0s_enable_controller: true
+# k0s_enable_worker: false
+#
+# Or for worker nodes:
+# k0s_enable_controller: false
+# k0s_enable_worker: true
+# k0s_controller_address: 192.168.1.100
+# k0s_token: <join-token>

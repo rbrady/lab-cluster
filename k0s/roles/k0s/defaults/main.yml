@@ -1,0 +1,65 @@
+---
+# k0s version to install (leave as 'latest' or specify a version like 'v1.29.1+k0s.0')
+k0s_version: latest
+
+# k0s binary download URL
+k0s_download_url: "https://get.k0s.sh"
+
+# Installation directory
+k0s_install_dir: /usr/local/bin
+
+# k0s configuration directory
+k0s_config_dir: /etc/k0s
+
+# k0s data directory
+k0s_data_dir: /var/lib/k0s
+
+# Enable controller (true for single-node setup)
+k0s_enable_controller: true
+
+# Enable worker (true for single-node setup)
+k0s_enable_worker: true
+
+# Service name
+k0s_service_name: k0scontroller
+
+# System requirements check
+k0s_min_memory_mb: 1024
+k0s_min_cpus: 1
+
+# Firewall settings (for firewalld on Fedora)
+k0s_configure_firewall: true
+k0s_firewall_ports:
+  - "6443/tcp" # Kubernetes API
+  - "8132/tcp" # Konnectivity
+  - "9443/tcp" # k0s API
+  - "10250/tcp" # kubelet
+  - "10256/tcp" # kube-proxy health
+  - "2380/tcp" # etcd peer
+  - "6783/tcp" # kube-router
+  - "6784/udp" # kube-router
+
+# SELinux settings
+k0s_selinux_permissive: true
+
+# k0s configuration options
+k0s_config:
+  spec:
+    api:
+      address: 127.0.0.1
+    storage:
+      type: etcd
+    network:
+      provider: kuberouter
+      podCIDR: 10.244.0.0/16
+      serviceCIDR: 10.96.0.0/12
+    extensions:
+      helm:
+        repositories:
+          - name: stable
+            url: https://charts.helm.sh/stable
+          - name: prometheus-community
+            url: https://prometheus-community.github.io/helm-charts
+
+# Enable metrics-server for resource monitoring
+k0s_enable_metrics_server: true

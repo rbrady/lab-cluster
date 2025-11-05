@@ -1,0 +1,43 @@
+# Ansible
+*.retry
+ansible.log
+.ansible/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+
+# Kubeconfig
+*.kubeconfig
+kubeconfig
+config
+
+# Local variables
+vars.yml
+
+# Backup files
+*.bak
+*.backup
+*~
+.*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Logs
+*.log

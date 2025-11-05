@@ -1,0 +1,169 @@
+---
+- name: Uninstall k0s Kubernetes cluster
+  hosts: k0s_nodes
+  become: yes
+  vars:
+    k0s_install_dir: /usr/local/bin
+    k0s_config_dir: /etc/k0s
+    k0s_data_dir: /var/lib/k0s
+    k0s_service_name: k0scontroller
+
+  tasks:
+    - name: Check if k0s is installed
+      stat:
+        path: "{{ k0s_install_dir }}/k0s"
+      register: k0s_binary
+
+    - name: Display uninstall information
+      debug:
+        msg: |
+          This playbook will completely remove k0s from your system.
+          All cluster data, configurations, and workloads will be deleted.
+      when: k0s_binary.stat.exists
+
+    - name: Stop k0s service
+      systemd:
+        name: "{{ k0s_service_name }}"
+        state: stopped
+      when: k0s_binary.stat.exists
+      ignore_errors: yes
+
+    - name: Disable k0s service
+      systemd:
+        name: "{{ k0s_service_name }}"
+        enabled: no
+      when: k0s_binary.stat.exists
+      ignore_errors: yes
+
+    - name: Reset k0s (removes all data and configurations)
+      command: "{{ k0s_install_dir }}/k0s reset"
+      when: k0s_binary.stat.exists
+      register: k0s_reset
+      failed_when: false
+
+    - name: Display reset output
+      debug:
+        var: k0s_reset.stdout_lines
+      when: k0s_reset is defined and k0s_reset.stdout_lines is defined
+
+    - name: Remove k0s systemd service file
+      file:
+        path: "/etc/systemd/system/{{ k0s_service_name }}.service"
+        state: absent
+
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: yes
+
+    - name: Remove k0s binary
+      file:
+        path: "{{ k0s_install_dir }}/k0s"
+        state: absent
+
+    - name: Remove k0s configuration directory
+      file:
+        path: "{{ k0s_config_dir }}"
+        state: absent
+
+    - name: Remove k0s data directory
+      file:
+        path: "{{ k0s_data_dir }}"
+        state: absent
+
+    - name: Remove k0s modules configuration
+      file:
+        path: /etc/modules-load.d/k0s.conf
+        state: absent
+
+    - name: Find k0s related processes
+      shell: ps aux | grep k0s | grep -v grep || true
+      register: k0s_processes
+      changed_when: false
+
+    - name: Display remaining k0s processes (if any)
+      debug:
+        msg: "{{ k0s_processes.stdout_lines }}"
+      when: k0s_processes.stdout != ""
+
+    - name: Check for leftover containers
+      shell: "crictl ps -a 2>/dev/null || true"
+      register: containers_check
+      changed_when: false
+      failed_when: false
+
+    - name: Remove firewall rules for k0s (if firewalld is active)
+      firewalld:
+        port: "{{ item }}"
+        permanent: yes
+        state: disabled
+        immediate: yes
+      loop:
+        - "6443/tcp"
+        - "8132/tcp"
+        - "9443/tcp"
+        - "10250/tcp"
+        - "10256/tcp"
+        - "2380/tcp"
+        - "6783/tcp"
+        - "6784/udp"
+      ignore_errors: yes
+
+    - name: Reload firewalld
+      systemd:
+        name: firewalld
+        state: reloaded
+      ignore_errors: yes
+
+    - name: Remove kubeconfig from user home directories
+      find:
+        paths: /home
+        patterns: 'config'
+        file_type: file
+        recurse: yes
+        depth: 3
+      register: kubeconfig_files
+
+    - name: Display found kubeconfig files
+      debug:
+        msg: "Found kubeconfig files that may need manual review: {{ kubeconfig_files.files | map(attribute='path') | list }}"
+      when: kubeconfig_files.matched > 0
+
+    - name: Optional - Remove kubeconfig from current user
+      file:
+        path: "{{ ansible_env.HOME }}/.kube/config"
+        state: absent
+      when: ansible_env.HOME is defined
+      ignore_errors: yes
+
+    - name: Verify k0s binary is removed
+      stat:
+        path: "{{ k0s_install_dir }}/k0s"
+      register: k0s_verify
+
+    - name: Uninstall summary
+      debug:
+        msg: |
+          ============================================
+          k0s Uninstall Complete!
+          ============================================
+
+          Removed:
+          - k0s binary: {{ k0s_install_dir }}/k0s
+          - k0s service: {{ k0s_service_name }}
+          - Configuration: {{ k0s_config_dir }}
+          - Data directory: {{ k0s_data_dir }}
+          - Firewall rules
+
+          Status: {% if not k0s_verify.stat.exists %}Successfully removed{% else %}Failed to remove binary{% endif %}
+
+          Manual cleanup (if needed):
+          - Check for remaining processes: ps aux | grep k0s
+          - Review iptables rules: sudo iptables -L -n
+          - Check for kubeconfig files in user home directories
+          - Reboot system if you encounter persistent issues
+
+          To reinstall k0s, simply run the playbook again:
+          ansible-playbook -i inventory.ini playbook.yml
+
+          ============================================
+      when: not k0s_binary.stat.exists or k0s_reset is defined

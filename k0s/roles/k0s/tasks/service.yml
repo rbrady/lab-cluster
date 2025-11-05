@@ -1,0 +1,29 @@
+---
+- name: Enable k0s service
+  systemd:
+    name: "{{ k0s_service_name }}"
+    enabled: yes
+    daemon_reload: yes
+
+- name: Start k0s service
+  systemd:
+    name: "{{ k0s_service_name }}"
+    state: started
+  register: k0s_service_start
+
+- name: Wait for k0s API server to be ready
+  command: "{{ k0s_install_dir }}/k0s kubectl get --raw /healthz"
+  register: k0s_health
+  until: k0s_health.rc == 0
+  retries: 30
+  delay: 10
+  changed_when: false
+
+- name: Get k0s service status
+  systemd:
+    name: "{{ k0s_service_name }}"
+  register: k0s_service_info
+
+- name: Display k0s service status
+  debug:
+    msg: "k0s service is {{ k0s_service_info.status.ActiveState }}"
