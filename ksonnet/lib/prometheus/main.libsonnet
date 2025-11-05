@@ -1,5 +1,11 @@
 local k = import 'k.libsonnet';
 
+// Import scrape configs
+local prometheusScrape = import './scrape-configs/prometheus.libsonnet';
+local traefikScrape = import './scrape-configs/traefik.libsonnet';
+local kubernetesScrape = import './scrape-configs/kubernetes.libsonnet';
+local kubeStateMetricsScrape = import './scrape-configs/kube-state-metrics.libsonnet';
+
 {
   new(namespace='monitoring'):: {
     local this = self,
@@ -19,6 +25,43 @@ local k = import 'k.libsonnet';
     // Start by adding the namespace resource
     namespace: k.core.v1.namespace.new(this._config.namespace)
                + k.core.v1.namespace.metadata.withLabels(this._config.labels),
+
+    // ServiceAccount for Prometheus
+    serviceAccount: k.core.v1.serviceAccount.new(this._config.name)
+                    + k.core.v1.serviceAccount.metadata.withNamespace(this._config.namespace)
+                    + k.core.v1.serviceAccount.metadata.withLabels(this._config.labels),
+
+    // ClusterRole for Prometheus
+    clusterRole: k.rbac.v1.clusterRole.new(this._config.name)
+                 + k.rbac.v1.clusterRole.metadata.withLabels(this._config.labels)
+                 + k.rbac.v1.clusterRole.withRules([
+                   {
+                     apiGroups: [''],
+                     resources: ['nodes', 'nodes/proxy', 'services', 'endpoints', 'pods'],
+                     verbs: ['get', 'list', 'watch'],
+                   },
+                   {
+                     apiGroups: [''],
+                     resources: ['configmaps'],
+                     verbs: ['get'],
+                   },
+                   {
+                     nonResourceURLs: ['/metrics'],
+                     verbs: ['get'],
+                   },
+                 ]),
+
+    // ClusterRoleBinding for Prometheus
+    clusterRoleBinding: k.rbac.v1.clusterRoleBinding.new(this._config.name)
+                        + k.rbac.v1.clusterRoleBinding.metadata.withLabels(this._config.labels)
+                        + k.rbac.v1.clusterRoleBinding.bindRole(this.clusterRole)
+                        + k.rbac.v1.clusterRoleBinding.withSubjects([
+                          {
+                            kind: 'ServiceAccount',
+                            name: this._config.name,
+                            namespace: this._config.namespace,
+                          },
+                        ]),
     // ConfigMap for Prometheus configuration
     configMap: k.core.v1.configMap.new(this._config.name)
                + k.core.v1.configMap.metadata.withNamespace(this._config.namespace)
@@ -30,23 +73,10 @@ local k = import 'k.libsonnet';
                      evaluation_interval: '15s',
                    },
                    scrape_configs: [
-                     {
-                       job_name: 'prometheus',
-                       static_configs: [
-                         {
-                           targets: ['localhost:9090'],
-                         },
-                       ],
-                     },
-                     {
-                       job_name: 'traefik',
-                       static_configs: [
-                         {
-                           targets: ['traefik-dashboard.traefik.svc.cluster.local:9000'],
-                         },
-                       ],
-                     },
-                   ],
+                     prometheusScrape.scrapeConfig,
+                     traefikScrape.scrapeConfig,
+                     kubeStateMetricsScrape.scrapeConfig,
+                   ] + kubernetesScrape.scrapeConfigs,
                  }),
                }),
     // PVC for Prometheus data
@@ -83,6 +113,7 @@ local k = import 'k.libsonnet';
                 + k.apps.v1.deployment.metadata.withLabels(this._config.labels)
                 + k.apps.v1.deployment.spec.selector.withMatchLabels(this._config.labels)
                 + k.apps.v1.deployment.spec.template.metadata.withLabels(this._config.labels)
+                + k.apps.v1.deployment.spec.template.spec.withServiceAccountName(this._config.name)
                 + k.apps.v1.deployment.spec.template.spec.withVolumes([
                   k.core.v1.volume.fromPersistentVolumeClaim('data', this._config.name + '-data'),
                   k.core.v1.volume.fromConfigMap('config', this._config.name),

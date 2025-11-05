@@ -6,7 +6,8 @@ local traefik = import 'traefik.libsonnet';
 local networkpolicy = import 'networkpolicy.libsonnet';
 local localPathProvisioner = import 'local-path-provisioner.libsonnet';
 local grafana = import 'grafana.libsonnet';
-local prometheus = import 'prometheus.libsonnet';
+local prometheus = import 'prometheus/main.libsonnet';
+local kubeStateMetrics = import 'kube-state-metrics.libsonnet';
 
 
 
@@ -44,6 +45,8 @@ local prometheus = import 'prometheus.libsonnet';
   grafana: grafana.new(),
   // Prometheus for metrics collection
   prometheus: prometheus.new(),
+  // Kube State Metrics for cluster state metrics
+  kubeStateMetrics: kubeStateMetrics.new(),
 
 
 
@@ -59,6 +62,7 @@ local prometheus = import 'prometheus.libsonnet';
   networkPolicyLocalPath: networkpolicy.allowAll('allow-all-local-path', 'local-path-storage'),
   networkPolicyGrafana: networkpolicy.allowAll('allow-all-grafana', 'grafana'),
   networkPolicyMonitoring: networkpolicy.allowAll('allow-all-monitoring', 'monitoring'),
+  networkPolicyKubeSystem: networkpolicy.allowAll('allow-all-kube-system', 'kube-system'),
 
 
 }
