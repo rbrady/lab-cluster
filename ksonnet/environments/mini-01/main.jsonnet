@@ -10,6 +10,7 @@ local prometheus = import 'prometheus/main.libsonnet';
 local prometheusKubeletRbac = import 'prometheus/kubelet-rbac.libsonnet';
 local kubeStateMetrics = import 'kube-state-metrics.libsonnet';
 local nodeExporter = import 'node-exporter.libsonnet';
+local keycloak = import 'keycloak.libsonnet';
 
 
 
@@ -54,6 +55,9 @@ local nodeExporter = import 'node-exporter.libsonnet';
   // Node Exporter for node-level metrics
   nodeExporter: nodeExporter.new(),
 
+  // Keycloak for identity management
+  keycloak: keycloak.new(),
+
 
 
   // Example nginx application
@@ -69,6 +73,7 @@ local nodeExporter = import 'node-exporter.libsonnet';
   networkPolicyGrafana: networkpolicy.allowAll('allow-all-grafana', 'grafana'),
   networkPolicyMonitoring: networkpolicy.allowAll('allow-all-monitoring', 'monitoring'),
   networkPolicyKubeSystem: networkpolicy.allowAll('allow-all-kube-system', 'kube-system'),
+  networkPolicyKeycloak: networkpolicy.allowAll('allow-all-keycloak', 'keycloak'),
 
 
 }
