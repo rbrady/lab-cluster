@@ -24,53 +24,8 @@
         },
       ],
     },
-    // Kubelet metrics
-    {
-      job_name: 'kubernetes-nodes',
-      kubernetes_sd_configs: [
-        {
-          role: 'node',
-        },
-      ],
-      scheme: 'https',
-      tls_config: {
-        ca_file: '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt',
-        insecure_skip_verify: true,
-      },
-      authorization: {
-        credentials_file: '/var/run/secrets/kubernetes.io/serviceaccount/token',
-      },
-      relabel_configs: [
-        {
-          action: 'labelmap',
-          regex: '__meta_kubernetes_node_label_(.+)',
-        },
-      ],
-    },
-    // Kubelet cAdvisor metrics (container metrics)
-    {
-      job_name: 'kubernetes-cadvisor',
-      kubernetes_sd_configs: [
-        {
-          role: 'node',
-        },
-      ],
-      scheme: 'https',
-      metrics_path: '/metrics/cadvisor',
-      tls_config: {
-        ca_file: '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt',
-        insecure_skip_verify: true,
-      },
-      authorization: {
-        credentials_file: '/var/run/secrets/kubernetes.io/serviceaccount/token',
-      },
-      relabel_configs: [
-        {
-          action: 'labelmap',
-          regex: '__meta_kubernetes_node_label_(.+)',
-        },
-      ],
-    },
+    // NOTE: kubernetes-nodes and kubernetes-cadvisor are disabled due to k0s kubelet authentication restrictions
+    // We use node-exporter for node metrics and kube-state-metrics for pod/container state instead
     // Service endpoints with prometheus.io annotations
     {
       job_name: 'kubernetes-service-endpoints',

@@ -14,14 +14,16 @@ High-level cluster health monitoring dashboard showing:
 - Node CPU and memory usage
 - Network receive/transmit rates per node
 
-### 2. Kubernetes Pod Resources
-**File:** `kubernetes-pod-resources.json`
+### 2. Kubernetes Pod Status
+**File:** `kubernetes-pod-status.json`
 
-Detailed pod and container resource monitoring with:
+Pod health and status monitoring with:
 - Filterable by namespace and pod name
-- Container CPU and memory usage with statistics
-- Pod network I/O metrics
-- Pod status table with color-coded status
+- Pods by phase (Running, Pending, Failed, etc.)
+- Pod restart rates
+- Detailed pod status table with ready status and restart counts
+
+**Note:** The original `kubernetes-pod-resources.json` dashboard requires cAdvisor metrics which are not accessible in k0s due to kubelet authentication restrictions. This dashboard uses kube-state-metrics instead for pod status monitoring.
 
 ### 3. Traefik Metrics
 **File:** `traefik-metrics.json`
@@ -82,10 +84,12 @@ For each dashboard file:
 
 The dashboards rely on metrics from:
 
-- **kubelet**: Container metrics via cAdvisor endpoint
-- **kube-state-metrics**: Cluster state metrics (pod status, node info, etc.)
-- **node_exporter**: Node-level metrics (CPU, memory, network, disk)
+- **node-exporter**: Node-level metrics (CPU, memory, network, disk) - Deployed as DaemonSet
+- **kube-state-metrics**: Cluster state metrics (pod status, node info, restarts, etc.)
 - **Traefik**: Ingress controller metrics
+- **API Server**: Kubernetes API server metrics
+
+**Note:** kubelet/cAdvisor metrics (kubernetes-nodes and kubernetes-cadvisor jobs) are disabled due to k0s kubelet authentication restrictions. We use node-exporter and kube-state-metrics as alternatives.
 
 ## Prometheus Scrape Configuration
 
@@ -93,11 +97,14 @@ Prometheus is configured to scrape:
 - **prometheus**: Self-monitoring
 - **traefik**: Traefik metrics endpoint
 - **kube-state-metrics**: Cluster state metrics (via service discovery)
+- **node-exporter**: Node hardware and OS metrics (via service discovery)
 - **kubernetes-apiservers**: API server metrics
-- **kubernetes-nodes**: Kubelet metrics
-- **kubernetes-cadvisor**: Container metrics
 - **kubernetes-service-endpoints**: Services with `prometheus.io/scrape: "true"` annotation
 - **kubernetes-pods**: Pods with `prometheus.io/scrape: "true"` annotation
+
+**Disabled due to k0s auth restrictions:**
+- ~~**kubernetes-nodes**: Kubelet metrics~~
+- ~~**kubernetes-cadvisor**: Container metrics~~
 
 ## Troubleshooting
 

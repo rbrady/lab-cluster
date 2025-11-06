@@ -197,7 +197,19 @@ local k = import 'k.libsonnet';
                 + k.apps.v1.deployment.spec.template.spec.withServiceAccountName(this._config.name)
                 + k.apps.v1.deployment.spec.template.spec.securityContext.withRunAsUser(65534)
                 + k.apps.v1.deployment.spec.template.spec.securityContext.withRunAsGroup(65534)
-                + k.apps.v1.deployment.spec.template.spec.securityContext.withFsGroup(65534),
+                + k.apps.v1.deployment.spec.template.spec.securityContext.withFsGroup(65534)
+                + k.apps.v1.deployment.spec.template.spec.withTolerations([
+                  {
+                    key: 'node-role.kubernetes.io/master',
+                    effect: 'NoSchedule',
+                    operator: 'Exists',
+                  },
+                  {
+                    key: 'node-role.kubernetes.io/control-plane',
+                    effect: 'NoSchedule',
+                    operator: 'Exists',
+                  },
+                ]),
 
     // Service
     service: k.core.v1.service.new(

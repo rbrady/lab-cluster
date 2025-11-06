@@ -5,6 +5,7 @@ local prometheusScrape = import './scrape-configs/prometheus.libsonnet';
 local traefikScrape = import './scrape-configs/traefik.libsonnet';
 local kubernetesScrape = import './scrape-configs/kubernetes.libsonnet';
 local kubeStateMetricsScrape = import './scrape-configs/kube-state-metrics.libsonnet';
+local nodeExporterScrape = import './scrape-configs/node-exporter.libsonnet';
 
 {
   new(namespace='monitoring'):: {
@@ -37,7 +38,7 @@ local kubeStateMetricsScrape = import './scrape-configs/kube-state-metrics.libso
                  + k.rbac.v1.clusterRole.withRules([
                    {
                      apiGroups: [''],
-                     resources: ['nodes', 'nodes/proxy', 'services', 'endpoints', 'pods'],
+                     resources: ['nodes', 'nodes/proxy', 'nodes/metrics', 'services', 'endpoints', 'pods'],
                      verbs: ['get', 'list', 'watch'],
                    },
                    {
@@ -46,7 +47,7 @@ local kubeStateMetricsScrape = import './scrape-configs/kube-state-metrics.libso
                      verbs: ['get'],
                    },
                    {
-                     nonResourceURLs: ['/metrics'],
+                     nonResourceURLs: ['/metrics', '/metrics/cadvisor'],
                      verbs: ['get'],
                    },
                  ]),
@@ -76,6 +77,7 @@ local kubeStateMetricsScrape = import './scrape-configs/kube-state-metrics.libso
                      prometheusScrape.scrapeConfig,
                      traefikScrape.scrapeConfig,
                      kubeStateMetricsScrape.scrapeConfig,
+                     nodeExporterScrape.scrapeConfig,
                    ] + kubernetesScrape.scrapeConfigs,
                  }),
                }),

@@ -7,7 +7,9 @@ local networkpolicy = import 'networkpolicy.libsonnet';
 local localPathProvisioner = import 'local-path-provisioner.libsonnet';
 local grafana = import 'grafana.libsonnet';
 local prometheus = import 'prometheus/main.libsonnet';
+local prometheusKubeletRbac = import 'prometheus/kubelet-rbac.libsonnet';
 local kubeStateMetrics = import 'kube-state-metrics.libsonnet';
+local nodeExporter = import 'node-exporter.libsonnet';
 
 
 
@@ -45,8 +47,12 @@ local kubeStateMetrics = import 'kube-state-metrics.libsonnet';
   grafana: grafana.new(),
   // Prometheus for metrics collection
   prometheus: prometheus.new(),
+  // Additional RBAC for Prometheus to access kubelet metrics
+  prometheusKubeletRbac: prometheusKubeletRbac,
   // Kube State Metrics for cluster state metrics
   kubeStateMetrics: kubeStateMetrics.new(),
+  // Node Exporter for node-level metrics
+  nodeExporter: nodeExporter.new(),
 
 
 
