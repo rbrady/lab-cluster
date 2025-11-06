@@ -11,7 +11,7 @@ local k = import 'k.libsonnet';
       httpPort: 8080,
       httpsPort: 8443,
       adminUser: 'admin',
-      adminPassword: 'IndyAtlas2024!',
+      adminPassword: 'admin!',
       storageSize: '5Gi',
       labels: {
         app: 'keycloak',
